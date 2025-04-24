@@ -30,8 +30,17 @@ public class BatchProperties {
     private int pageSize = 10000;
 
     @Min(1)
-    @Max(10_000)
+    @Max(10)
     private int corePoolSize = 5 ;
+
+    @Min(1)
+    @Max(10)
+    private int partitionSize = 5;
+
+
+
+
+
 
 
     @Min(1)
@@ -62,9 +71,7 @@ public class BatchProperties {
      * Default: 8, Number of partitions that will be used to process the data concurrently. Should be
      * optimized as per available machine resources.
      */
-    @Min(1)
-    @Max(128)
-    private int partitionSize = 3;
+
 
     /**
      * Default: 100, Minimum number of records to trigger partitioning otherwise it could be counter
@@ -81,7 +88,7 @@ public class BatchProperties {
      */
     private String taskExecutor;
 
-    private String outputFile = "C:/Users/msi/Desktop/New folder/test2/BatchGrafana/src/main/resources/transactions.csv" ;
+    private String outputFile = "C:/Users/msi/Downloads/perfermanceTest/perfermanceTest/src/main/resources/transactions.csv" ;
 
 
 }
