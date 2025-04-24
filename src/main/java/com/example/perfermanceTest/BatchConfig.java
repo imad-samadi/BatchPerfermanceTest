@@ -26,13 +26,27 @@ public class BatchConfig {
                 .build();
     }*/
 
-    @Bean
+   /* @Bean
     public Job multiThreadedStepJob(
             JobRepository jobRepository,
             @Qualifier("multiThreadedStep") Step simpleTransactionStep, // Reference the step bean defined above
             SimpleJobTimingListener jobTimingListener) {                   // Inject job listener
 
         return new JobBuilder("multiThreadedJob", jobRepository)
+                .incrementer(new RunIdIncrementer()) // Allows re-running with different parameters
+                .listener(jobTimingListener)         // Register the job listener
+                .flow(simpleTransactionStep)        // Define the sequence of steps
+                .end()
+                .build();
+    }*/
+
+    @Bean
+    public Job multiThreadedStepJob(
+            JobRepository jobRepository,
+            @Qualifier("asyncProcessingStep") Step simpleTransactionStep, // Reference the step bean defined above
+            SimpleJobTimingListener jobTimingListener) {                   // Inject job listener
+
+        return new JobBuilder("asyncProcessingJob", jobRepository)
                 .incrementer(new RunIdIncrementer()) // Allows re-running with different parameters
                 .listener(jobTimingListener)         // Register the job listener
                 .flow(simpleTransactionStep)        // Define the sequence of steps
