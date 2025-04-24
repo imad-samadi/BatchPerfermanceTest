@@ -20,18 +20,20 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "batch")
 public class BatchProperties {
 
-    /**
-     * Default: 100, Number of items that are processed in a single transaction by a chunk-oriented
-     * step.
-     */
+
     @Min(1)
     @Max(10_000)
-    private int chunkSize = 5000;
+    private int chunkSize =10000;
 
-    /**
-     * Default: 10, Maximum number of items to skip as per configured Skip policy, exceeding which
-     * fails the job.
-     */
+    @Min(1)
+    @Max(10_000)
+    private int pageSize = 10000;
+
+    @Min(1)
+    @Max(10_000)
+    private int corePoolSize = 5 ;
+
+
     @Min(1)
     private int skipLimit = 10;
 
@@ -54,10 +56,7 @@ public class BatchProperties {
     @Max(5)
     private int backoffMultiplier = 2;
 
-    /** Default: 100, Number of records to be read in each page by Paging Item readers. */
-    @Min(1)
-    @Max(10_000)
-    private int pageSize = 100;
+
 
     /**
      * Default: 8, Number of partitions that will be used to process the data concurrently. Should be
