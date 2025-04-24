@@ -1,0 +1,29 @@
+package com.example.perfermanceTest;
+
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.Step;
+import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import com.example.perfermanceTest.Listeners.SimpleJobTimingListener ;
+@Configuration
+public class BatchConfig {
+
+    @Bean
+    public Job simpleTransactionJob(
+            JobRepository jobRepository,
+            @Qualifier("simpleTransactionStep") Step simpleTransactionStep, // Reference the step bean defined above
+            SimpleJobTimingListener jobTimingListener) {                   // Inject job listener
+
+        return new JobBuilder("simpleTransactionJob", jobRepository)
+                .incrementer(new RunIdIncrementer()) // Allows re-running with different parameters
+                .listener(jobTimingListener)         // Register the job listener
+                .flow(simpleTransactionStep)        // Define the sequence of steps
+                .end()
+                .build();
+    }
+
+}
