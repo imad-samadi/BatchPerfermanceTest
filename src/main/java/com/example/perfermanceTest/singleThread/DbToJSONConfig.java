@@ -1,8 +1,10 @@
-package com.example.perfermanceTest;
+package com.example.perfermanceTest.singleThread;
 
+import com.example.perfermanceTest.BatchProperties;
 import com.example.perfermanceTest.Listeners.SimpleChunkListener;
 import com.example.perfermanceTest.Listeners.SimpleStepTimingListener;
 import com.example.perfermanceTest.Model.Transaction;
+import com.example.perfermanceTest.Model.TransactionProcessor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.repository.JobRepository;

@@ -1,4 +1,4 @@
-package com.example.perfermanceTest.config; // Or your chosen configuration package
+package com.example.perfermanceTest.asyncProcessing; // Or your chosen configuration package
 
 import com.example.perfermanceTest.BatchProperties;
 import com.example.perfermanceTest.Listeners.SimpleChunkListener;
@@ -39,15 +39,14 @@ public class AsyncStepConfig {
     public TaskExecutor asyncProcessorTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 
-        // Ensure this method exists in your BatchProperties or use a fixed value/different property
-        // Example: Using partitionSize if corePoolSize isn't defined, but ideally add corePoolSize
-        int poolSize = batchProperties.getPartitionSize(); // Or ideally batchProperties.getCorePoolSize()
+
+        int poolSize = batchProperties.getPartitionSize();
         log.info("Configuring Async Processor Task Executor with pool size: {}", poolSize);
         executor.setCorePoolSize(poolSize);
-        executor.setMaxPoolSize(poolSize); // Fixed size pool often suitable for batch
-        // executor.setQueueCapacity(...) // Consider queue capacity if needed
+        executor.setMaxPoolSize(poolSize);
+
         executor.setThreadNamePrefix("async-proc-");
-        // Removed the setThreadFactory for daemon threads - default non-daemon is usually preferred
+
         executor.initialize();
         return executor;
     }
@@ -61,8 +60,8 @@ public class AsyncStepConfig {
 
         AsyncItemProcessor<Transaction, Transaction> asyncProcessor = new AsyncItemProcessor<>();
         asyncProcessor.setDelegate(delegateProcessor);
-        asyncProcessor.setTaskExecutor(taskExecutor); // Assign the executor
-        // asyncProcessor.afterPropertiesSet(); // Usually not needed, framework calls it
+        asyncProcessor.setTaskExecutor(taskExecutor);
+
         return asyncProcessor;
     }
 
@@ -70,11 +69,11 @@ public class AsyncStepConfig {
     @Bean
     @Qualifier("asyncItemWriter")
     public AsyncItemWriter<Transaction> asyncItemWriter(
-            @Qualifier("transactionWriter") ItemWriter<Transaction> delegateWriter) { // Inject delegate
+            @Qualifier("transactionWriter") ItemWriter<Transaction> delegateWriter) {
 
         AsyncItemWriter<Transaction> asyncWriter = new AsyncItemWriter<>();
         asyncWriter.setDelegate(delegateWriter);
-        // asyncWriter.afterPropertiesSet(); // Usually not needed
+
         return asyncWriter;
     }
 
@@ -82,24 +81,24 @@ public class AsyncStepConfig {
     @Bean
     @Qualifier("asyncProcessingStep")
     public Step asyncProcessingStep(
-            JobRepository jobRepository, // Inject required dependency
-            PlatformTransactionManager transactionManager, // Inject required dependency
-            BatchProperties batchProperties, // Inject required dependency
-            @Qualifier("PagingReader") ItemReader<Transaction> reader, // Inject reader
-            @Qualifier("asyncItemProcessor") AsyncItemProcessor<Transaction, Transaction> asyncProcessor, // Inject async processor
-            @Qualifier("asyncItemWriter") AsyncItemWriter<Transaction> asyncWriter, // Inject async writer
-            SimpleStepTimingListener stepListener, // Inject listener
-            SimpleChunkListener chunkListener) {   // Inject listener
+            JobRepository jobRepository,
+            PlatformTransactionManager transactionManager,
+            BatchProperties batchProperties,
+            @Qualifier("PagingReader") ItemReader<Transaction> reader,
+            @Qualifier("asyncItemProcessor") AsyncItemProcessor<Transaction, Transaction> asyncProcessor,
+            @Qualifier("asyncItemWriter") AsyncItemWriter<Transaction> asyncWriter,
+            SimpleStepTimingListener stepListener,
+            SimpleChunkListener chunkListener) {
 
         return new StepBuilder("asyncProcessingStep", jobRepository)
-                // The output of the asyncProcessor is Future<Transaction>, input to writer is also Future<Transaction>
+
                 .<Transaction, Future<Transaction>>chunk(batchProperties.getChunkSize(), transactionManager)
                 .reader(reader)
-                .processor(asyncProcessor) // Use the Async processor
-                .writer(asyncWriter)       // Use the Async writer
+                .processor(asyncProcessor)
+                .writer(asyncWriter)
                 .listener(stepListener)
                 .listener(chunkListener)
-                // DO NOT add .taskExecutor(...) here when using AsyncItemProcessor/Writer pattern
+
                 .build();
     }
 }

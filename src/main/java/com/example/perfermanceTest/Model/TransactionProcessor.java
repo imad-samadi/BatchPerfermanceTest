@@ -1,10 +1,8 @@
-package com.example.perfermanceTest;
+package com.example.perfermanceTest.Model;
 
-import com.example.perfermanceTest.Model.Transaction;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.item.ItemProcessor;
-import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -21,6 +19,7 @@ public class TransactionProcessor implements ItemProcessor<Transaction, Transact
     public Transaction process(final Transaction transaction) throws Exception {
 
         String threadName = Thread.currentThread().getName();
+        //log.info("Processing transaction {} by thread : {}", transaction, threadName);
         threadProcessingCounts.computeIfAbsent(threadName, k -> new LongAdder()).increment();
 
 

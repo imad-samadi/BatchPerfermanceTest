@@ -1,5 +1,6 @@
-package com.example.perfermanceTest;
+package com.example.perfermanceTest.multiThread;
 
+import com.example.perfermanceTest.BatchProperties;
 import com.example.perfermanceTest.Listeners.SimpleChunkListener;
 import com.example.perfermanceTest.Listeners.SimpleStepTimingListener;
 import com.example.perfermanceTest.Model.Transaction;
@@ -36,7 +37,7 @@ public class MultiThreadedSteConfig {
         exec.setMaxPoolSize(batchProperties.getCorePoolSize());
         exec.setThreadFactory(r -> {
             Thread t = new Thread(r);
-            t.setDaemon(true);          // ← now a daemon thread
+            t.setDaemon(true);
             return t;
         });
         exec.initialize();
