@@ -23,19 +23,19 @@ public class BatchProperties {
 
     @Min(1)
     @Max(10_000)
-    private int chunkSize =(10000);
+    private int chunkSize =(5000); // 5000
 
     @Min(1)
     @Max(10_000)
-    private int pageSize = 5000 ;
+    private int pageSize = 5000 ; // 5000
+
+
+
+    private int corePoolSize = 6 ;
 
     @Min(1)
-    @Max(10)
-    private int corePoolSize = 5 ;
-
-    @Min(1)
-    @Max(10)
-    private int partitionSize = 5;
+    @Max(21)
+    private int partitionSize = 10;
 
 
 

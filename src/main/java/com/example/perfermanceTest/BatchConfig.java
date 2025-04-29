@@ -6,13 +6,15 @@ import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import com.example.perfermanceTest.Listeners.SimpleJobTimingListener ;
 @Configuration
 public class BatchConfig {
 
-   /* @Bean
+    @Bean
+    @ConditionalOnProperty(name="app.job.name", havingValue="simpleTransactionJob")
     public Job simpleTransactionJob(
             JobRepository jobRepository,
             @Qualifier("simpleTransactionStep") Step simpleTransactionStep, // Reference the step bean defined above
@@ -24,9 +26,10 @@ public class BatchConfig {
                 .flow(simpleTransactionStep)        // Define the sequence of steps
                 .end()
                 .build();
-    }*/
+    }
 
-   /*@Bean
+    @Bean
+    @ConditionalOnProperty(name="app.job.name", havingValue="multiThreadedJob")
     public Job multiThreadedStepJob(
             JobRepository jobRepository,
             @Qualifier("multiThreadedStep") Step simpleTransactionStep, // Reference the step bean defined above
@@ -38,10 +41,11 @@ public class BatchConfig {
                 .flow(simpleTransactionStep)        // Define the sequence of steps
                 .end()
                 .build();
-    }*/
+    }
 
-   /* @Bean
-    public Job multiThreadedStepJob(
+    @Bean
+    @ConditionalOnProperty(name="app.job.name", havingValue="asyncProcessingJob")
+    public Job asynchStepJob(
             JobRepository jobRepository,
             @Qualifier("asyncProcessingStep") Step simpleTransactionStep, // Reference the step bean defined above
             SimpleJobTimingListener jobTimingListener) {                   // Inject job listener
@@ -52,8 +56,9 @@ public class BatchConfig {
                 .flow(simpleTransactionStep)        // Define the sequence of steps
                 .end()
                 .build();
-    }*/
+    }
     @Bean
+    @ConditionalOnProperty(name="app.job.name", havingValue="partitionedJob", matchIfMissing=true)
     public Job partitionedJob(
             JobRepository jobRepository,
             SimpleJobTimingListener jobTimingListener,

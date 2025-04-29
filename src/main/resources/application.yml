@@ -5,7 +5,7 @@ spring:
 
 
   datasource:
-    url: jdbc:postgresql://localhost:5433/perferTest2
+    url: jdbc:postgresql://localhost:5433/testPerforV2
     username: postgres
     password: imad
     driver-class-name: org.postgresql.Driver
@@ -30,7 +30,12 @@ spring:
 
 
 
+
   main:
     web-application-type: none
 
-
+app:
+  job :
+    name : partitionedJob
+batch:
+  partition-size: 8

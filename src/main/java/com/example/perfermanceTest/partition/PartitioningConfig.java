@@ -1,12 +1,11 @@
 package com.example.perfermanceTest.partition;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Configuration;
 import com.example.perfermanceTest.BatchProperties;
 import com.example.perfermanceTest.Listeners.SimpleChunkListener;
 import com.example.perfermanceTest.Listeners.SimpleStepTimingListener;
 import com.example.perfermanceTest.Model.Transaction;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.partition.PartitionHandler;
 import org.springframework.batch.core.partition.support.Partitioner;
@@ -18,36 +17,51 @@ import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
 
+/**
+ * Configuration class for partitioning a Spring Batch job.
+ * Defines the master step, worker step, partitioner, and related threading.
+ */
 @Configuration
 @RequiredArgsConstructor
 @Slf4j
 public class PartitioningConfig {
 
+    // Externalized properties for batch configuration (e.g., chunk size, pool size, partition count)
     private final BatchProperties batchProperties;
+
+    // Repository for storing Spring Batch metadata (job and step executions)
     private final JobRepository jobRepository;
-    private final PlatformTransactionManager platformTransactionManager ;
+
+    // Transaction manager used for worker step transactions
+    private final PlatformTransactionManager platformTransactionManager;
+
+    // DataSource for PartitionRangePartitioner to calculate ranges
     private final DataSource dataSource;
 
-
+    // Shared processor bean for transforming Transaction items
     private final ItemProcessor<Transaction, Transaction> transactionProcessor;
 
+    // Listeners for logging step and chunk timing
     private final SimpleStepTimingListener stepTimingListener;
     private final SimpleChunkListener chunkListener;
 
-
-
+    /**
+     * TaskExecutor for running worker step partitions in parallel.
+     * The pool size is defined by batchProperties.corePoolSize.
+     */
     @Bean
     @Qualifier("partitionTaskExecutor")
     public TaskExecutor partitionTaskExecutor() {
         ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
-        int poolSize = batchProperties.getPartitionSize(); // Size based on number of partitions
-        log.info("Configuring Partition Task Executor with pool size: {}", poolSize);
+        int poolSize = batchProperties.getCorePoolSize();
+        log.info("Configuring partition executor with pool size: {}", poolSize);
         taskExecutor.setCorePoolSize(poolSize);
         taskExecutor.setMaxPoolSize(poolSize);
         taskExecutor.setThreadNamePrefix("partition-worker-");
@@ -55,55 +69,60 @@ public class PartitioningConfig {
         return taskExecutor;
     }
 
-
+    /**
+     * Partitioner that splits the 'transactions' table into ranges of IDs.
+     * Creates ExecutionContexts containing minId/maxId for each partition.
+     */
     @Bean
     public Partitioner columnRangePartitioner() {
         return new ColumnRangePartitioner(dataSource, "transactions", "id");
     }
 
-
+    /**
+     * Worker step definition: each partition executes this step.
+     * Reads, processes, and writes Transaction items for its ID range.
+     */
     @Bean
     public Step workerStep(
-            @Qualifier("partitionedReader") ItemReader<Transaction> reader, // Use step-scoped reader
-            @Qualifier("partitionedWriter") ItemWriter<Transaction> writer, // Use step-scoped writer
-            JobRepository workerJobRepository, // Need JobRepository here
-            PlatformTransactionManager workerTransactionManager // Need TransactionManager here
+            @Qualifier("PagingReaderPartition") ItemReader<Transaction> reader,
+            @Qualifier("partitionedWriter") ItemWriter<Transaction> writer
     ) {
-
-        return new StepBuilder("workerStep", workerJobRepository)
-                .<Transaction, Transaction>chunk(batchProperties.getChunkSize(), workerTransactionManager)
-                .reader(reader)
-                .processor(transactionProcessor)
-                .writer(writer)
-
-                .listener(stepTimingListener)
-                .listener(chunkListener)
-                .build();
+        return new StepBuilder("workerStep", jobRepository)
+                .<Transaction, Transaction>chunk(batchProperties.getChunkSize(), platformTransactionManager)
+                .reader(reader)                     // Step-scoped reader for this partition
+                .processor(transactionProcessor)    // Business logic processor
+                .writer(writer)                     // Step-scoped writer for this partition
+                .listener(stepTimingListener)       // Listener for step timing
+                .listener(chunkListener)            // Listener for chunk timing
+                .build();                           // No taskExecutor here; handled by partition handler
     }
 
-    // --- Partition Handler Bean ---
+    /**
+     * PartitionHandler that launches the workerStep in parallel using the TaskExecutor.
+     * gridSize determines how many partitions run concurrently.
+     */
     @Bean
     public PartitionHandler partitionHandler(
-            Step workerStep, // Inject the worker step definition
-            @Qualifier("partitionTaskExecutor") TaskExecutor taskExecutor) { // Inject the partition executor
+            Step workerStep,
+            @Qualifier("partitionTaskExecutor") TaskExecutor taskExecutor
+    ) {
         TaskExecutorPartitionHandler handler = new TaskExecutorPartitionHandler();
-        handler.setStep(workerStep); // Set the step to be executed by workers
-        handler.setTaskExecutor(taskExecutor); // Set the thread pool for workers
-        handler.setGridSize(batchProperties.getPartitionSize()); // Set number of concurrent workers
-        // handler.afterPropertiesSet(); // Usually not needed, framework calls it
-        log.info("Configuring Partition Handler with gridSize: {}", batchProperties.getPartitionSize());
+        handler.setStep(workerStep);
+        handler.setTaskExecutor(taskExecutor);
+        handler.setGridSize(batchProperties.getPartitionSize());
+        log.info("Configuring PartitionHandler with gridSize: {}", batchProperties.getPartitionSize());
         return handler;
     }
 
-
+    /**
+     * Master step definition: orchestrates partitioning by invoking the partitionHandler.
+     * Uses the columnRangePartitioner to generate ExecutionContexts for workers.
+     */
     @Bean
-    public Step masterStep(
-            Partitioner partitioner, // Inject the partitioner
-            PartitionHandler partitionHandler // Inject the partition handler
-    ) {
+    public Step masterStep(Partitioner partitioner, PartitionHandler partitionHandler) {
         return new StepBuilder("masterStep", jobRepository)
-                .partitioner("workerStep", partitioner) // Specify worker step name and partitioner
-                .partitionHandler(partitionHandler)      // Specify the handler
-                .build();
+                .partitioner("workerStep", partitioner)  // Name of worker step and the partitioner
+                .partitionHandler(partitionHandler)       // Executes partitions
+                .build();                                 // No commit interval here
     }
 }
