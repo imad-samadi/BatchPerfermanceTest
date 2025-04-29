@@ -1,8 +1,10 @@
-package com.example.perfermanceTest;
+package com.example.perfermanceTest.singleThread;
 
+import com.example.perfermanceTest.BatchProperties;
 import com.example.perfermanceTest.Listeners.SimpleChunkListener;
 import com.example.perfermanceTest.Listeners.SimpleStepTimingListener;
 import com.example.perfermanceTest.Model.Transaction;
+import com.example.perfermanceTest.Model.TransactionProcessor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.repository.JobRepository;
@@ -28,83 +30,100 @@ import javax.sql.DataSource;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+
+
+/**
+ * Configuration for a single-threaded Spring Batch job
+ * that reads transactions from a database and writes them to a CSV file.
+ */
 @Configuration
 @RequiredArgsConstructor
-public class DbToJSONConfig {
+public class DbToCSVConfig {
 
+    // DataSource providing connections to the database
     private final DataSource dataSource;
+    // Repository for storing batch metadata (executions, steps)
     private final JobRepository jobRepository;
+    // Transaction manager for handling chunk transactions
     private final PlatformTransactionManager transactionManager;
+    // Externalized batch properties (e.g. chunk size, page size, output file path)
     private final BatchProperties batchProperties;
 
+    /**
+     * Factory bean for generating paging queries against the transactions table.
+     * @return a configured SqlPagingQueryProviderFactoryBean
+     */
     @Bean(name = "SqlPagingQueryProvider")
     public SqlPagingQueryProviderFactoryBean getQueryProvider3() {
         SqlPagingQueryProviderFactoryBean queryProvider = new SqlPagingQueryProviderFactoryBean();
 
-        // Select all columns (or specify the ones you need)
+        // Select all relevant columns for export
         queryProvider.setSelectClause("id, transaction_date, amount, created_at");
         queryProvider.setFromClause("FROM transactions");
         queryProvider.setDataSource(dataSource);
 
-        // Define sort keys (optional, but required for paging)
+        // Define sorting to ensure consistent paging by ID ascending
         Map<String, Order> sortKeys = new LinkedHashMap<>();
-        sortKeys.put("id", Order.ASCENDING); // Ensures consistent ordering for paging
+        sortKeys.put("id", Order.ASCENDING);
         queryProvider.setSortKeys(sortKeys);
 
         return queryProvider;
     }
+
+    /**
+     * ItemReader that pages through the transactions table using JDBC.
+     * Builds a JdbcPagingItemReader via a helper class.
+     */
     @Bean(name = "PagingReader")
-    public JdbcPagingItemReader<Transaction> pagingReadDb3(@Qualifier("SqlPagingQueryProvider") PagingQueryProvider queryProvider) { // Inject the query provider
-        JdbcPagingItemReader<Transaction> reader = new JdbcPagingItemReader<>();
-        reader.setName("JdbcPagingItemReader");
-        reader.setDataSource(dataSource);
-        reader.setQueryProvider(queryProvider);
-        reader.setRowMapper(new BeanPropertyRowMapper<>(Transaction.class));
-        reader.setPageSize(batchProperties.getPageSize());
-        return reader;
-    }
-
-    @Bean
-    public FlatFileItemWriter<Transaction> transactionWriter() {
-
-        BeanWrapperFieldExtractor<Transaction> fieldExtractor = new BeanWrapperFieldExtractor<>();
-        fieldExtractor.setNames(new String[] {"id", "transactionDate", "amount", "createdAt"});
-        fieldExtractor.afterPropertiesSet();
-
-        DelimitedLineAggregator<Transaction> lineAggregator = new DelimitedLineAggregator<>();
-        lineAggregator.setDelimiter(",");
-        lineAggregator.setFieldExtractor(fieldExtractor);
-
-        return new FlatFileItemWriterBuilder<Transaction>()
-                .name("transactionWriter")
-                .resource(new FileSystemResource(batchProperties.getOutputFile()))
-                .lineAggregator(lineAggregator)
-                .headerCallback(writer -> writer.write("id,transaction_date,amount,created_at"))
-                .shouldDeleteIfExists(true)
+    public JdbcPagingItemReader<Transaction> pagingReader(
+            DataSource dataSource,
+            @Qualifier("SqlPagingQueryProvider") PagingQueryProvider queryProvider,
+            BatchProperties batchProperties
+    ) {
+        // Delegate to TransactionPagingReader for cleaner encapsulation
+        return new TransactionPagingReader(dataSource, queryProvider, batchProperties.getPageSize())
                 .build();
     }
+
+    /**
+     * ItemWriter that writes Transaction objects into a delimited CSV file.
+     * Uses a helper class for configuration.
+     */
     @Bean
-    ItemProcessor<Transaction,Transaction> transactionProcessor() {
+    public FlatFileItemWriter<Transaction> transactionWriter(BatchProperties batchProperties) {
+        return new TransactionFileWriter(batchProperties.getOutputFile())
+                .build();
+    }
+
+    /**
+     * Simple pass-through processor .
+     */
+    @Bean
+    public ItemProcessor<Transaction, Transaction> transactionProcessor() {
         return new TransactionProcessor();
     }
+
+    /**
+     * Definition of the batch step: read -> process -> write with chunk transactions.
+     */
     @Bean
     public Step simpleTransactionStep(
-
-            @Qualifier("PagingReader") ItemReader<Transaction> transactionReader, // Use bean name from DbToJSONConfig
-            ItemProcessor<Transaction, Transaction> transactionProcessor,      // Inject your processor bean
-            ItemWriter<Transaction> transactionWriter,                      // Inject your writer bean
-            SimpleStepTimingListener stepTimingListener,                      // Inject step listener
-            SimpleChunkListener chunkListener) {                              // Inject chunk listener
+            @Qualifier("PagingReader") ItemReader<Transaction> transactionReader,
+            ItemProcessor<Transaction, Transaction> transactionProcessor,
+            ItemWriter<Transaction> transactionWriter,
+            SimpleStepTimingListener stepTimingListener,
+            SimpleChunkListener chunkListener) {
 
         return new StepBuilder("simpleTransactionStep", jobRepository)
-                .<Transaction, Transaction>chunk(batchProperties.getChunkSize(), transactionManager) // Configure chunk size
+                // Configure chunk size and transaction manager
+                .<Transaction, Transaction>chunk(batchProperties.getChunkSize(), transactionManager)
                 .reader(transactionReader)
                 .processor(transactionProcessor)
                 .writer(transactionWriter)
-                .listener(stepTimingListener) // Register the step listener
-                .listener(chunkListener)      // Register the chunk listener
-                // .faultTolerant() // Add fault tolerance later if needed
+                // Register listeners for step/ chunk timing
+                .listener(stepTimingListener)
+                .listener(chunkListener)
                 .build();
     }
-
 }
+

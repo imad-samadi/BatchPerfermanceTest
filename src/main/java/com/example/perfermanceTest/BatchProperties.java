@@ -20,18 +20,29 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "batch")
 public class BatchProperties {
 
-    /**
-     * Default: 100, Number of items that are processed in a single transaction by a chunk-oriented
-     * step.
-     */
+
     @Min(1)
     @Max(10_000)
-    private int chunkSize = 5000;
+    private int chunkSize =(5000); // 5000
 
-    /**
-     * Default: 10, Maximum number of items to skip as per configured Skip policy, exceeding which
-     * fails the job.
-     */
+    @Min(1)
+    @Max(10_000)
+    private int pageSize = 5000 ; // 5000
+
+
+
+    private int corePoolSize = 6 ;
+
+    @Min(1)
+    @Max(21)
+    private int partitionSize = 10;
+
+
+
+
+
+
+
     @Min(1)
     private int skipLimit = 10;
 
@@ -54,18 +65,13 @@ public class BatchProperties {
     @Max(5)
     private int backoffMultiplier = 2;
 
-    /** Default: 100, Number of records to be read in each page by Paging Item readers. */
-    @Min(1)
-    @Max(10_000)
-    private int pageSize = 100;
+
 
     /**
      * Default: 8, Number of partitions that will be used to process the data concurrently. Should be
      * optimized as per available machine resources.
      */
-    @Min(1)
-    @Max(128)
-    private int partitionSize = 3;
+
 
     /**
      * Default: 100, Minimum number of records to trigger partitioning otherwise it could be counter
@@ -82,7 +88,7 @@ public class BatchProperties {
      */
     private String taskExecutor;
 
-    private String outputFile = "C:/Users/msi/Desktop/New folder/test2/BatchGrafana/src/main/resources/transactions.csv" ;
+    private String outputFile = "C:/Users/msi/Downloads/perfermanceTest/perfermanceTest/src/main/resources/transactions.csv" ;
 
 
 }
