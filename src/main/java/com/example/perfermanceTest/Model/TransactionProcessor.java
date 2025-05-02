@@ -19,7 +19,8 @@ public class TransactionProcessor implements ItemProcessor<Transaction, Transact
     public Transaction process(final Transaction transaction) throws Exception {
 
         String threadName = Thread.currentThread().getName();
-        //log.info("Processing transaction {} by thread : {}", transaction, threadName);
+
+        //log.warn("Processing transaction {} by thread : {}", transaction.getId(), threadName);
         threadProcessingCounts.computeIfAbsent(threadName, k -> new LongAdder()).increment();
 
 

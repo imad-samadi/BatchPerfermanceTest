@@ -6,6 +6,7 @@ import com.example.perfermanceTest.Listeners.SimpleStepTimingListener;
 import com.example.perfermanceTest.Model.Transaction;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.ItemWriteListener;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
@@ -47,11 +48,11 @@ public class AsyncStepConfig {
      */
     private final BatchProperties batchProperties;
 
-    /**
-     * TaskExecutor bean for executing processor logic asynchronously.
-     * Uses a fixed-size thread pool based on batchProperties.partitionSize.
-     */
-    @Bean
+
+
+    //we could use TaskExecutor of multiThreadStep or create another one
+
+    /*@Bean
     @Qualifier("asyncProcessorTaskExecutor") // Descriptive qualifier
     public TaskExecutor asyncProcessorTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -67,7 +68,7 @@ public class AsyncStepConfig {
 
         executor.initialize();
         return executor;
-    }
+    }*/
 
     /**
      * Wraps the synchronous ItemProcessor in an AsyncItemProcessor.
@@ -77,7 +78,7 @@ public class AsyncStepConfig {
     @Qualifier("asyncItemProcessor")
     public AsyncItemProcessor<Transaction, Transaction> asyncItemProcessor(
             @Qualifier("transactionProcessor") ItemProcessor<Transaction, Transaction> delegateProcessor,
-            @Qualifier("asyncProcessorTaskExecutor") TaskExecutor taskExecutor) {
+            @Qualifier("multiThreadStepExecutor") TaskExecutor taskExecutor) {
 
         AsyncItemProcessor<Transaction, Transaction> asyncProcessor = new AsyncItemProcessor<>();
         asyncProcessor.setDelegate(delegateProcessor); // Original, synchronous processor
@@ -110,6 +111,7 @@ public class AsyncStepConfig {
     @Bean
     @Qualifier("asyncProcessingStep")
     public Step asyncProcessingStep(
+
             @Qualifier("PagingReader") ItemReader<Transaction> reader,
             @Qualifier("asyncItemProcessor") AsyncItemProcessor<Transaction, Transaction> asyncProcessor,
             @Qualifier("asyncItemWriter") AsyncItemWriter<Transaction> asyncWriter,
@@ -123,7 +125,8 @@ public class AsyncStepConfig {
                 .processor(asyncProcessor)        // Async processing
                 .writer(asyncWriter)              // Async writer unwrapping Futures
                 .listener(stepListener)           // Measure step execution time
-                .listener(chunkListener)          // Measure chunk execution time
+                .listener(chunkListener)
+
                 .build();                          // No taskExecutor here: processor itself is async
     }
 

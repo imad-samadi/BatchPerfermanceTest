@@ -5,6 +5,7 @@ import com.example.perfermanceTest.Listeners.SimpleChunkListener;
 import com.example.perfermanceTest.Listeners.SimpleStepTimingListener;
 import com.example.perfermanceTest.Model.Transaction;
 import lombok.RequiredArgsConstructor;
+import org.springframework.batch.core.ItemWriteListener;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
@@ -17,7 +18,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.PlatformTransactionManager;
-
+import com.example.perfermanceTest.Listeners.MultiThreadLoggingListeners;
 import javax.sql.DataSource;
 
 /**
@@ -66,6 +67,7 @@ public class MultiThreadedStepConfig {
     @Bean
     @Qualifier("multiThreadedStep")
     public Step multiThreadedStep(
+            @Qualifier("multiThreadWriteListener") ItemWriteListener<Transaction> multiThreadWriteListener,
             @Qualifier("PagingReader") ItemReader<Transaction> transactionReader,
             ItemProcessor<Transaction, Transaction> transactionProcessor,
             ItemWriter<Transaction> transactionWriter,
@@ -79,7 +81,9 @@ public class MultiThreadedStepConfig {
                 .processor(transactionProcessor)        // Business logic processor
                 .writer(transactionWriter)             // Shared, thread-safe writer
                 .listener(stepTimingListener)          // Listener to time the step
-                .listener(chunkListener)               // Listener to time each chunk
+                .listener(chunkListener)
+                //new listenner
+                .listener(multiThreadWriteListener)
                 .taskExecutor(multiThreadStepExecutor()) // Executes chunks in parallel threads
                 .build();
     }
