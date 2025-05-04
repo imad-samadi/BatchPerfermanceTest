@@ -20,9 +20,12 @@ public class TransactionProcessor implements ItemProcessor<Transaction, Transact
 
         String threadName = Thread.currentThread().getName();
 
-        //log.warn("Processing transaction {} by thread : {}", transaction.getId(), threadName);
+        log.warn("Processing transaction {} by thread : {}", transaction.getId(), threadName);
         threadProcessingCounts.computeIfAbsent(threadName, k -> new LongAdder()).increment();
 
+       /* if(transaction.getId().equals(13)) {
+            throw new RuntimeException("Transaction date is null");
+        }*/
 
 
 

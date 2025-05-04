@@ -96,7 +96,7 @@ public class DbToCSVConfig {
     }
 
     /**
-     * Simple pass-through processor .
+     * Simple pass-through processor (can be customized to transform data).
      */
     @Bean
     public ItemProcessor<Transaction, Transaction> transactionProcessor() {

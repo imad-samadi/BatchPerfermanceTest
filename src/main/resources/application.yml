@@ -36,6 +36,6 @@ spring:
 
 app:
   job :
-    name : multiThreadedJob        # multiThreadedJob asyncProcessingJob
+    name : FaultTolerance        # multiThreadedJob asyncProcessingJob
 batch:
   partition-size: 8
