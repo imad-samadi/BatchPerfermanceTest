@@ -10,7 +10,7 @@ public class FaultTolerProcess implements ItemProcessor<Transaction2, Transactio
     public Transaction2 process(Transaction2 item) throws Exception {
         log.info("processing from fault tolerance item  : {}", item.getId());
 
-       /*if(item.getId().compareTo(13)==0){
+      /* if(item.getId().compareTo(13)==0){
             throw new CanNotProcessItemException("Can not process item with id 13");
         }*/
         return item;

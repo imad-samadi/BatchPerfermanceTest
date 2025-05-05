@@ -80,7 +80,6 @@ public class DbToCSVConfig {
             @Qualifier("SqlPagingQueryProvider") PagingQueryProvider queryProvider,
             BatchProperties batchProperties
     ) {
-        // Delegate to TransactionPagingReader for cleaner encapsulation
         return new TransactionPagingReader(dataSource, queryProvider, batchProperties.getPageSize())
                 .build();
     }

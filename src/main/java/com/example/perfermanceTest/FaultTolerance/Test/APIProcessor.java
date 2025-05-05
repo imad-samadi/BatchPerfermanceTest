@@ -34,7 +34,7 @@ public class APIProcessor implements ItemProcessor<Transaction2, Transaction2> {
 
     private Transaction2 doProcessing(Transaction2 transaction2) {
 
-        log.info("processing from API processing : {}", transaction2.getId());
+        log.info("process : Sending API .......... : {}", transaction2.getId());
 
 
 
